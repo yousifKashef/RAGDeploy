@@ -5,6 +5,10 @@ from langgraph.graph import StateGraph, START
 from typing_extensions import TypedDict, List
 from langchain_core.documents import Document
 from langchain import hub
+from typing import Annotated, Sequence
+from langchain_core.messages import BaseMessage
+from langgraph.graph.message import add_messages
+from langchain_core.prompts.chat import ChatPromptTemplate
 
 llm = ChatOpenAI(model="gpt-4")
 embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
@@ -18,16 +22,19 @@ vector_store = ElasticsearchStore(
 
 
 class RetrievalState(TypedDict):
-    question: str
+    messages: Annotated[Sequence[BaseMessage], add_messages]
     company_tag: str
     context: List[Document]
     answer: str
 
 
-
 def retrieve(state: RetrievalState):
+    query = ""
+    for doc in state["context"]:
+        query += doc.page_content
+    query += state["messages"][-1].content
     retrieved_docs = vector_store.similarity_search(
-        query=state["question"],
+        query=query,
         filter=[{"term": {"metadata.company_tag.keyword": state["company_tag"]}}]
     )
     return {"context": retrieved_docs}
@@ -46,9 +53,13 @@ def generate(state: RetrievalState):
     )
 
     # Construct the prompt and invoke LLM
-    prompt = hub.pull("rlm/rag-prompt")
+    prompt = template = ChatPromptTemplate([
+    ("system", "You are an assistant for question-answering tasks. Use the following pieces of retrieved context to answer the question. If you don't know the answer, just say that you don't know. Use three sentences maximum and keep the answer concise."),
+    ("system", "{context}"),
+    ("human", "{messages}"),
+])
     messages = prompt.invoke({
-        "question": state["question"],
+        "messages": state["messages"],
         "context": docs_content
     })
     response = llm.invoke(messages)
