@@ -1,73 +1,109 @@
 import os
-from langchain_openai import ChatOpenAI, OpenAIEmbeddings
-from langchain_elasticsearch import ElasticsearchStore
 from langgraph.graph import StateGraph, START
 from typing_extensions import TypedDict, List
 from langchain_core.documents import Document
 from langchain import hub
 from typing import Annotated, Sequence
-from langchain_core.messages import BaseMessage
-from langgraph.graph.message import add_messages
+from typing_extensions import TypedDict
 from langchain_core.prompts.chat import ChatPromptTemplate
+from langchain_core.messages import BaseMessage
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from langchain_elasticsearch import ElasticsearchStore
+from langgraph.graph.message import add_messages
+from langchain_core.tools import tool
+from langchain_core.messages import SystemMessage
+from langgraph.checkpoint.memory import MemorySaver
+from langgraph.graph import END, StateGraph
+from langgraph.prebuilt import ToolNode, tools_condition
+
 
 llm = ChatOpenAI(model="gpt-4")
 embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
 vector_store = ElasticsearchStore(
-    es_url="https://3e3128b1cc10435eb0c19bdaa0fc4626.me-south-1.aws.elastic-cloud.com:9243",
+    es_url="https://my-elasticsearch-project-da8b8c.es.us-east-1.aws.elastic.cloud:443",
     es_api_key=os.environ["ELASTICSEARCH_API_KEY"],
     index_name="procedure_test",
     embedding=embeddings
 )
 
-
-
-class RetrievalState(TypedDict):
+class MessagesState(TypedDict):
     messages: Annotated[Sequence[BaseMessage], add_messages]
     company_tag: str
-    context: List[Document]
-    answer: str
 
 
-def retrieve(state: RetrievalState):
-    query = ""
-    for doc in state["context"]:
-        query += doc.page_content
-    query += state["messages"][-1].content
-    retrieved_docs = vector_store.similarity_search(
-        query=query,
-        filter=[{"term": {"metadata.company_tag.keyword": state["company_tag"]}}]
+@tool(response_format="content_and_artifact")
+def retrieve(query: str):
+    """Retrieve information related to a query."""
+    retrieved_docs = vector_store.similarity_search(query, k=2)
+    serialized = "\n\n".join(
+        (f"Source: {doc.metadata}\n" f"Content: {doc.page_content}")
+        for doc in retrieved_docs
     )
-    return {"context": retrieved_docs}
+    return serialized, retrieved_docs
 
-def generate(state: RetrievalState):
-    for doc in state["context"]:
-        doc_name = doc.metadata.get("file_name", "Unknown Source")
-        chunk_preview = doc.page_content[:200]
-        print(f"--- Document: {doc_name} ---")
-        print(f"Chunk Preview: {chunk_preview}...\n")
+# Step 1: Generate an AIMessage that may include a tool-call to be sent.
+def query_or_respond(state: MessagesState):
+    """Generate tool call for retrieval or respond."""
+    llm_with_tools = llm.bind_tools([retrieve])
+    response = llm_with_tools.invoke(state["messages"])
+    # MessagesState appends messages to state instead of overwriting
+    return {"messages": [response]}
 
-    # Format documents into a single context string
-    docs_content = "\n\n".join(
-        f"[{doc.metadata.get('file_name', 'Unknown Source')}]\n{doc.page_content}"
-        for doc in state["context"]
+
+# Step 2: Execute the retrieval.
+tools = ToolNode([retrieve])
+
+
+# Step 3: Generate a response using the retrieved content.
+def generate(state: MessagesState):
+    """Generate answer."""
+    # Get generated ToolMessages
+    recent_tool_messages = []
+    for message in reversed(state["messages"]):
+        if message.type == "tool":
+            recent_tool_messages.append(message)
+        else:
+            break
+    tool_messages = recent_tool_messages[::-1]
+
+    # Format into prompt
+    docs_content = "\n\n".join(doc.content for doc in tool_messages)
+    system_message_content = (
+        "You are an assistant for question-answering tasks. "
+        "Use the following pieces of retrieved context to answer "
+        "the question. If you don't know the answer, say that you "
+        "don't know. Use three sentences maximum and keep the "
+        "answer concise."
+        "\n\n"
+        f"{docs_content}"
     )
+    conversation_messages = [
+        message
+        for message in state["messages"]
+        if message.type in ("human", "system")
+        or (message.type == "ai" and not message.tool_calls)
+    ]
+    prompt = [SystemMessage(system_message_content)] + conversation_messages
 
-    # Construct the prompt and invoke LLM
-    prompt = template = ChatPromptTemplate([
-    ("system", "You are an assistant for question-answering tasks. Use the following pieces of retrieved context to answer the question. If you don't know the answer, just say that you don't know. Use three sentences maximum and keep the answer concise."),
-    ("system", "{context}"),
-    ("human", "{messages}"),
-])
-    messages = prompt.invoke({
-        "messages": state["messages"],
-        "context": docs_content
-    })
-    response = llm.invoke(messages)
+    # Run
+    response = llm.invoke(prompt)
+    return {"messages": [response]}
 
-    return {"answer": response.content}
+# Build graph
+graph_builder = StateGraph(MessagesState)
 
-# Build the Retrieval Graph
-retrieval_graph_builder = StateGraph(RetrievalState).add_sequence([retrieve, generate])
-retrieval_graph_builder.add_edge(START, "retrieve")
-graph = retrieval_graph_builder.compile()
-graph.name = "New Graph"
+graph_builder.add_node(query_or_respond)
+graph_builder.add_node(tools)
+graph_builder.add_node(generate)
+
+graph_builder.set_entry_point("query_or_respond")
+graph_builder.add_conditional_edges(
+    "query_or_respond",
+    tools_condition,
+    {END: END, "tools": "tools"},
+)
+graph_builder.add_edge("tools", "generate")
+graph_builder.add_edge("generate", END)
+
+memory = MemorySaver()
+graph = graph_builder.compile(checkpointer=memory)
