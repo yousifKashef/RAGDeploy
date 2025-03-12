@@ -45,7 +45,7 @@ def retrieve(query: str):
 def query_or_respond(state: MessagesState):
     """Generate tool call for retrieval or respond."""
     llm_with_tools = llm.bind_tools([retrieve])
-    response = llm_with_tools.invoke(state["messages"])
+    response = llm_with_tools.invoke([SystemMessage("You are smart RAG bot. You get to decide when to answer and when to retrieve. You are currently deployed as a procedural bot. You answer questions about company procedures. So things like what do I do if always warrant a tool call to your retriever")] + state["messages"])
     # MessagesState appends messages to state instead of overwriting
     return {"messages": [response]}
 
