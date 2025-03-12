@@ -71,7 +71,7 @@ def generate(state: MessagesState):
     system_message_content = (
         "You are an assistant for question-answering tasks. "
         "Use the following pieces of retrieved context to provide "
-        "long, detailed answers to the question. Include relevant "
+        "A concise but detailed answers to the question. Include relevant "
         "documentation and information, quoting them in a formatted "
         "manner to ensure clarity and traceability. "
         "\n\n"
