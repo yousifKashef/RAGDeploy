@@ -70,13 +70,21 @@ def generate(state: MessagesState):
     docs_content = "\n\n".join(doc.content for doc in tool_messages)
     system_message_content = (
         "You are an assistant for question-answering tasks. "
-        "Use the following pieces of retrieved context to answer "
-        "the question. If you don't know the answer, say that you "
-        "don't know. Use three sentences maximum and keep the "
-        "answer concise."
+        "Use the following pieces of retrieved context to provide "
+        "long, detailed answers to the question. Include relevant "
+        "documentation and information, quoting them in a formatted "
+        "manner to ensure clarity and traceability. "
         "\n\n"
         f"{docs_content}"
+        "\n\n"
+        "For quotations, use the following template: \n"
+        "```quote\n"
+        "{quote}\n"
+        "```\n"
+        "Ensure the answer is comprehensive and thoroughly explains "
+        "the context and rationale behind it."
     )
+
     conversation_messages = [
         message
         for message in state["messages"]
