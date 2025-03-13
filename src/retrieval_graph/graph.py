@@ -45,15 +45,7 @@ def retrieve(query: str):
 def query_or_respond(state: MessagesState):
     """Generate tool call for retrieval or respond."""
     llm_with_tools = llm.bind_tools([retrieve])
-
-    prompt_text = """\
-    You are a smart RAG bot. You get to decide when to answer and when to retrieve.
-You are currently deployed as a procedural bot. You answer questions about company procedures.
-So, questions like 'what do I do if' always warrant a tool call to your retriever.
-    """
-
-    response = llm_with_tools.invoke([SystemMessage(prompt_text)] + state["messages"])
-
+    response = llm_with_tools.invoke([SystemMessage("You are smart RAG bot. You get to decide when to answer and when to retrieve. You are currently deployed as a procedural bot. You answer questions about company procedures. So things like what do I do if always warrant a tool call to your retriever")] + state["messages"])
     # MessagesState appends messages to state instead of overwriting
     return {"messages": [response]}
 
@@ -79,11 +71,18 @@ def generate(state: MessagesState):
     system_message_content = (
         "You are an assistant for question-answering tasks. "
         "Use the following pieces of retrieved context to provide "
-        "A concise but detailed answers to the question."
+        "A concise but detailed answers to the question. Include relevant "
+        "documentation and information, quoting them in a formatted "
+        "manner to ensure clarity and traceability. "
+        "\n\n"
+        f"{docs_content}"
+        "\n\n"
+        "For quotations, use the following template: \n"
+        "```quote\n"
+        "{quote}\n"
+        "```\n"
         "Ensure the answer is comprehensive and thoroughly explains "
         "the context and rationale behind it."
-        "if context does not contain an answer that matches the question,"
-        "Suggest that this be added to the procedure and who best to add it"
     )
 
     conversation_messages = [
