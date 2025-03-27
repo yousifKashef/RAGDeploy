@@ -17,7 +17,7 @@ from langgraph.graph import END, StateGraph
 from langgraph.prebuilt import ToolNode, tools_condition
 
 
-llm = ChatOpenAI(model="gpt-4")
+llm = ChatOpenAI(model="gpt-4o")
 embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
 vector_store = ElasticsearchStore(
     es_url="https://my-elasticsearch-project-da8b8c.es.us-east-1.aws.elastic.cloud:443",
