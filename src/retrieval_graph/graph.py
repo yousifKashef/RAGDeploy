@@ -81,6 +81,7 @@ def generate(state: MessagesState):
         "```quote\n"
         "{quote}\n"
         "```\n"
+        "make sure that quotes appear before regular talk and make sure you only answer what they are asking about. specific answers to specific questions"
         "Ensure the answer is comprehensive and thoroughly explains "
         "the context and rationale behind it."
         "no need to format other text for appearance. so no titles in **"
