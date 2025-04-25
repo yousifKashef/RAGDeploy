@@ -83,6 +83,7 @@ def generate(state: MessagesState):
         "```\n"
         "make sure that quotes appear before regular talk and make sure you only answer what they are asking about. specific answers to specific questions"
         "Ensure the answer is comprehensive and thoroughly explains "
+        "Ensure that your quotes are full and complete. as to give the reader a full orinentation of the procedure before having a conversation about it "
         "the context and rationale behind it."
         "no need to format other text for appearance. so no titles in **"
         "if your answer involves the name of the form, at the very end after some white space, provide the name of the form within ###form name###. provide just this at the end nothing else. for example ###F.21234###"
