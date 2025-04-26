@@ -81,12 +81,12 @@ def generate(state: MessagesState):
         "```quote\n"
         "{quote}\n"
         "```\n"
-        "make sure that quotes appear before regular talk and make sure you only answer what they are asking about. specific answers to specific questions"
         "Ensure the answer is comprehensive and thoroughly explains "
-        "Ensure that your quotes are full and complete. as to give the reader a full orinentation of the procedure before having a conversation about it "
-        "the context and rationale behind it."
-        "no need to format other text for appearance. so no titles in **"
-        "if your answer involves the name of the form, at the very end after some white space, provide the name of the form within ###form name###. provide just this at the end nothing else. for example ###F.21234###"
+        "the context and rationale behind it. keep it narrow to what the user is asking about"
+        "Do not format the text in any way."
+        "if your answer involves the name of the form, at the very end after some white space, provide the name of the form within ###form name###."
+        "provide just this at the end nothing else. for example ###F.21234###"
+        "make sure that it is the name of a form as explicitly stated in the procedure and do not infer it. you must not quote the name of the procedure as a form"
     )
 
     conversation_messages = [
