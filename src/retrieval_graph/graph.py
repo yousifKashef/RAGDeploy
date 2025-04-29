@@ -82,11 +82,11 @@ def generate(state: MessagesState):
         "{quote}\n"
         "```\n"
         "Ensure the answer is comprehensive and thoroughly explains "
-        "the context and rationale behind it. keep it narrow to what the user is asking about"
-        "Do not format the text in any way."
-        "if your answer involves the name of the form, at the very end after some white space, provide the name of the form within ###form name###."
-        "provide just this at the end nothing else. for example ###F.21234###"
-        "make sure that it is the name of a form as explicitly stated in the procedure and do not infer it. you must not quote the name of the procedure as a form"
+        "the context and rationale behind it"
+        #"Do not format the text in any way."
+        #"if your answer involves the name of the form, at the very end after some white space, provide the name of the form within ###form name###."
+        #"provide just this at the end nothing else. for example ###F.21234###"
+        #"make sure that it is the name of a form as explicitly stated in the procedure and do not infer it. you must not quote the name of the procedure as a form"
     )
 
     conversation_messages = [
